@@ -2,7 +2,7 @@ version: "3"
 services:
     AQICalc:
         container_name: AQICalc
-        image: farktronix/AQICalc:latest
+        image: farktronix/aqicalc:latest
         restart: always
         environment:
             INFLUX_URL: "influx.home.rkas.net"
