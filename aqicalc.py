@@ -48,7 +48,7 @@ def createInfluxAQIMeasurement(time, aqi, fieldname, host, location, sensor):
                 "host" : host,
                 "sensor" : sensor,
             },
-            "time" : time,
+            #"time" : time,
             "fields" : { fieldname : aqi }
     }
 
@@ -56,7 +56,9 @@ def createInfluxAQIMeasurement(time, aqi, fieldname, host, location, sensor):
 def queryForField(fieldname):
     updates = []
 
-    results = client.query('SELECT mean(' + fieldname + ') FROM "airquality" WHERE time > now() - 10m GROUP BY time(10m), "host", "sensor", "location" fill(previous) LIMIT 1')
+    query='SELECT mean(' + fieldname + ') FROM "airquality" WHERE time > now() - 11m GROUP BY time(11m), "host", "sensor", "location" fill(none) LIMIT 1'
+    print(query)
+    results = client.query(query) 
 
 #    print(results.raw)
 
@@ -69,6 +71,9 @@ def queryForField(fieldname):
         result = next(item[1])
         val = result['mean']
         time = result['time']
+
+        if val is None:
+            continue
 
         aqi = calcAQI(val, pm25Breakpoints)
 
@@ -96,6 +101,15 @@ except:
     print("ERROR: INFLUX_DBL environment variable is not defined. Exiting")
     sys.exit(1)
 
+shouldSubmit=True
+try: 
+    noSubmit=os.environ['NO_SUBMIT']
+    if noSubmit.lower() == "true":
+        shouldSubmit = False
+        print("Not submitting results")
+except:
+    pass
+
 client = InfluxDBClient(host=influxURL)
 client.switch_database(influxDBName)
 
@@ -104,4 +118,8 @@ allUpdates = allUpdates + queryForField("pm100")
 
 print("All updates: \n" + str(allUpdates))
 
-client.write_points(allUpdates)
+if shouldSubmit:
+    print("Submitting results")
+    client.write_points(allUpdates)
+else:
+    print("Skipping result submission")
